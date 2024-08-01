@@ -1,0 +1,24 @@
+- name: install apache2
+  apt:
+    name: apache2
+    state: latest
+  notify: apache2 service
+  tags:
+    - base-install
+- name: Remove file
+  file:
+    path: /va/var/www/html/index.html
+    state: absent
+- name: Creating a file with content
+  copy:
+    dest: "/var/www/html/index.html"
+    content: |
+      <html>
+      <body>
+        <h1>Hello, World!</h1>
+        <p>I'm a programmer now!<br/>
+        Oh Snap! I'm doing the damn thing!</p>
+      </body>
+      </html>
+
+

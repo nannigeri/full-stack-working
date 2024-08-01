@@ -1,0 +1,39 @@
+- hosts: your_ubuntu_server
+  become: yes
+  tasks:
+    - name: Update apt cache and install dependencies
+      apt:
+        update_cache: yes
+        name: apt-transport-https ca-certificates curl software-properties-common
+
+    - name: Add Microsoft repository GPG key
+      apt_key:
+        url: https://packages.microsoft.com/keys/microsoft.asc
+        state: present
+
+    - name: Add Microsoft package repository
+      apt_repository:
+        repo: deb [arch=amd64] https://packages.microsoft.com/ubuntu/{{ ansible_distribution_release }}/prod {{ ansible_distribution_release }} main
+        state: present
+
+    - name: Install .NET SDK
+      apt:
+        update_cache: yes
+        name: dotnet-sdk-5.0
+        state: present
+
+    - name: Clone the ASP.NET Core app repository
+      git:
+        repo: https://github.com/yourusername/your-repo.git
+        dest: /opt/your-app
+        version: master
+
+    - name: Build the ASP.NET Core app
+      shell: dotnet publish --configuration Release --output /opt/your-app/publish
+      args:
+        chdir: /opt/your-app
+
+    - name: Run the ASP.NET Core app
+      shell: dotnet /opt/your-app/publish/YourApp.dll
+      args:
+        chdir: /opt/your-app

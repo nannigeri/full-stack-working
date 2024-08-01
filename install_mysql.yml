@@ -1,0 +1,107 @@
+- hosts: webservers
+  become: yes
+  gather_facts: false
+  vars:
+    new_mysql_root_password: Pa$$w0rd
+    mysqlsoftware:
+      - mysql-server
+      - mysql-client
+  tasks:
+    - name: install python, pip, etc.
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      with_items:
+        - pip 
+        - python3-dev 
+        - default-libmysqlclient-dev 
+        - build-essential
+
+    - name: Install MySQL server
+      apt:
+        name: mysql-server
+        state: present
+        update_cache: yes
+
+    - name: Install MySQL client
+      apt:
+        name: mysql-client
+        state: present
+        update_cache: yes
+
+    - name: pip install mysqlclient
+      pip:
+        name: mysqlclient
+
+    - name: Start the MySQL service
+      service:
+        name: mysql
+        state: started
+
+    - name: copy .my.cnf file with root password credentials
+      template:
+        src: /home/ubuntu/Ansible-Intro/templates/root_my.cnf.j2
+        dest: /root/.my.cnf
+        owner: root
+        mode: '0600'
+
+    - name: copy .my.cnf file for ubuntu user
+      template:
+        src: /home/ubuntu/Ansible-Intro/templates/ubuntu_my.cnf.j2
+        dest: /home/ubuntu/.my.cnf
+        owner: ubuntu
+        mode: '0600'
+
+    - name: update mysql root password for all root accounts
+      mysql_user:
+        name: root
+        host: "{{ ansible_host }}"
+        password: "{{ new_mysql_root_password }}"
+        login_user: root
+        login_password: "{{ new_mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: delete anonymous MySQL server user for localhost
+      mysql_user:
+        user: ""
+        state: absent
+        login_user: root
+        login_password: "{{ new_mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: remove the MySQL test database
+      mysql_db:
+        db: test
+        state: absent
+        login_user: root
+        login_password: "{{ new_mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create MySQL user ubuntu
+      mysql_user:
+        name: ubuntu
+        host: "{{ ansible_host }}"
+        password: "{{ new_mysql_root_password }}"
+        priv: "*.*:ALL"
+        state: present
+        login_user: root
+        login_password: "{{ new_mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+    
+    - name: Grant privileges to MySQL user ubuntu
+      mysql_user:
+        name: ubuntu
+        host: "{{ ansible_host }}"
+        password: "{{ new_mysql_root_password }}"
+        priv: "*.*:ALL"
+        state: present
+        login_user: root
+        login_password: "{{ new_mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        
+    - name: Restart MySQL service
+      service:
+        name: mysql
+        state: restarted
+

@@ -1,0 +1,33 @@
+---
+- name: Install MySQL on Ubuntu
+  hosts: webservers
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install MySQL packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - mysql-server
+        - mysql-client
+
+    - name: Configure MySQL service
+      template:
+        src: mysql.cnf.j2
+        dest: /etc/mysql/mysql.conf.d/mysqld.cnf
+        owner: mysql
+        group: mysql
+        mode: 0644
+      notify:
+        - Restart MySQL
+
+  handlers:
+    - name: Restart MySQL
+      service:
+        name: mysql
+        state: restarted

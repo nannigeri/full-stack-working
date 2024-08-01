@@ -1,0 +1,41 @@
+---
+- hosts: webservers
+  become: yes
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install Apache2
+      apt:
+        name: apache2
+        state: latest
+      notify: apache2 service
+      tags:
+        - base-install
+
+    - name: Remove default index.html file
+      file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: Create a custom index.html file
+      copy:
+        dest: "/var/www/html/index.html"
+        content: |
+          <html>
+          <body>
+            <h1>Hello, World!</h1>
+            <p>I'm a programmer now!</p>
+          </body>
+          </html>
+
+  handlers:
+    - name: Restart and enable apache2
+      service:
+        name: apache2
+        state: restarted
+        enabled: yes
+      listen: apache2 service
+
+

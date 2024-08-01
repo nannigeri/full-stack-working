@@ -1,0 +1,107 @@
+---
+- name: Install Jenkins
+  hosts: controlnode
+  become: true
+
+  pre_tasks:
+    - name: Disable unattended-upgrades service
+      systemd:
+        name: unattended-upgrades
+        enabled: no
+        state: stopped
+      ignore_errors: yes
+
+    - name: Kill any running unattended-upgrades processes
+      shell: |
+        pgrep -f unattended-upgrades | xargs -r kill -9
+      ignore_errors: yes
+      register: kill_result
+
+    - name: Debug kill_result
+      debug:
+        var: kill_result
+
+    - name: Ensure no apt or dpkg processes are running
+      shell: |
+        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+          echo "Waiting for other apt/dpkg processes to finish..."
+          sleep 10
+        done
+      retries: 30
+      delay: 10
+      until: result.rc == 0
+      register: result
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name: gnupg
+        state: present
+        update_cache: yes
+      retries: 5
+      delay: 10
+      until: result is success
+      register: result
+
+    - name: Add Jenkins apt repository key using apt-key adv
+      command: apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5BA31D57EF5975CA
+      register: add_key_result
+      ignore_errors: yes
+      retries: 5
+      delay: 10
+      until: add_key_result.rc == 0
+
+    - name: Ensure Jenkins apt repository key was added
+      fail:
+        msg: "Failed to add Jenkins apt repository key"
+      when: add_key_result.rc != 0
+
+    - name: Add Jenkins apt repository
+      apt_repository:
+        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+      retries: 5
+      delay: 10
+      until: result is success
+      register: result
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      retries: 5
+      delay: 10
+      until: result is success
+      register: result
+
+    - name: Install Java Runtime Environment
+      apt:
+        name: openjdk-11-jre
+        state: present
+      retries: 5
+      delay: 10
+      until: result is success
+      register: result
+
+    - name: Install Jenkins package
+      apt:
+        name: jenkins
+        state: present
+      retries: 5
+      delay: 10
+      until: result is success
+      register: result
+
+    - name: Install additional packages
+      apt:
+        name: fontconfig
+        state: present
+      retries: 5
+      delay: 10
+      until: result is success
+      register: result
+
+    - name: Start Jenkins service
+      service:
+        name: jenkins
+        state: started
+        enabled: yes
